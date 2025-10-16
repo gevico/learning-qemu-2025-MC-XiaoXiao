@@ -53,6 +53,17 @@ static void g233_soc_init(Object *obj)
      * You can add more devices here(e.g. cpu, gpio)
      * Attention: The cpu resetvec is 0x1004
      */
+    MachineState *ms = MACHINE(qdev_get_machine());
+    G233SoCState *s = RISCV_G233_SOC(obj);
+
+    object_initialize_child(obj, "cpus", &s->cpus,
+                            TYPE_RISCV_HART_ARRAY);
+    object_property_set_int(OBJECT(&s->cpus), "num-harts", ms->smp.cpus,
+                            &error_abort);
+    qdev_prop_set_uint64(DEVICE(&s->cpus), "resetvec", 0x1004);
+
+    object_initialize_child(obj, "riscv.g233.gpio0", &s->gpio,
+                            TYPE_SIFIVE_GPIO);
 }
 
 static void g233_soc_realize(DeviceState *dev, Error **errp)
@@ -63,6 +74,9 @@ static void g233_soc_realize(DeviceState *dev, Error **errp)
     const MemMapEntry *memmap = g233_memmap;
 
     /* CPUs realize */
+    qdev_prop_set_string(DEVICE(&s->cpus), "cpu-type",
+                         ms->cpu_type);
+    sysbus_realize(SYS_BUS_DEVICE(&s->cpus), errp);
 
     /* Mask ROM */
     memory_region_init_rom(&s->mask_rom, OBJECT(dev), "riscv.g233.mrom",
@@ -147,7 +161,7 @@ static void g233_machine_init(MachineState *machine)
 {
     MachineClass *mc = MACHINE_GET_CLASS(machine);
     const MemMapEntry *memmap = g233_memmap;
-
+    MemoryRegion *system_memory = get_system_memory();
     G233MachineState *s = RISCV_G233_MACHINE(machine);
     int i;
     RISCVBootInfo boot_info;
@@ -160,9 +174,12 @@ static void g233_machine_init(MachineState *machine)
     }
 
     /* Initialize SoC */
-
+    object_initialize_child(OBJECT(machine), "riscv.g233.cpu", &s->soc, TYPE_RISCV_G233_SOC);
+    qdev_realize(DEVICE(&s->soc), NULL, &error_fatal);
 
     /* Data Memory(DDR RAM) */
+    memory_region_add_subregion(system_memory, memmap[G233_DEV_DRAM].base,
+                                machine->ram);
 
     /* Mask ROM reset vector */
     uint32_t reset_vec[5];

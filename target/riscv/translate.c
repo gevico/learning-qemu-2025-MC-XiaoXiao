@@ -1176,6 +1176,7 @@ static uint32_t opcode_at(DisasContextBase *dcbase, target_ulong pc)
 #include "insn_trans/trans_rvm.c.inc"
 #include "insn_trans/trans_rva.c.inc"
 #include "insn_trans/trans_rvf.c.inc"
+#include "insn_trans/trans_rvg233.c.inc"
 #include "insn_trans/trans_rvd.c.inc"
 #include "insn_trans/trans_rvh.c.inc"
 #include "insn_trans/trans_rvv.c.inc"

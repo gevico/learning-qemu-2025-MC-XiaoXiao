@@ -717,4 +717,55 @@ target_ulong helper_hyp_hlvx_wu(CPURISCVState *env, target_ulong addr)
     return cpu_ldl_code_mmu(env, addr, oi, ra);
 }
 
+void helper_dma(CPURISCVState *env, target_ulong dst, target_ulong src, target_ulong gran)
+{
+    uint32_t size = (8 << (gran & 3));
+    
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            uint32_t tmp = cpu_ldl_le_data(env, src + (size * i + j) * sizeof(uint32_t));
+            cpu_stl_le_data(env, dst + (size * j + i) * sizeof(uint32_t), tmp);
+        }
+    }
+}
+
+void helper_sort(CPURISCVState *env, target_ulong addr, target_ulong array_num, target_ulong sort_num)
+{
+    for (int i = 0; i < sort_num - 1; i++) {
+        for (int j = 0; j < sort_num - i - 1; j++) {
+            int32_t value_a = (int32_t)cpu_ldl_le_data(env, addr + j * sizeof(int32_t));
+            int32_t value_b = (int32_t)cpu_ldl_le_data(env, addr + (j + 1) * sizeof(int32_t));
+
+            if (value_a > value_b) {
+                cpu_stl_le_data(env, addr + j * sizeof(int32_t), (uint32_t)value_b);
+                cpu_stl_le_data(env, addr + (j + 1) * sizeof(int32_t), (uint32_t)value_a);
+            }
+        }
+    }
+}
+
+void helper_crush(CPURISCVState *env, target_ulong dst, target_ulong src, target_ulong num)
+{
+    uint32_t dst_value;
+    for (int i = 0, j = 0; i < num; i += 2) {
+        dst_value = cpu_ldub_data(env, src + i) & 0xf;
+        if (i + 1 < num)
+            dst_value |= (cpu_ldub_data(env, src + (i + 1)) & 0xf) << 4;
+
+        cpu_stb_data(env, dst + j++, dst_value);
+        dst_value = 0;
+    }
+}
+
+void helper_expand(CPURISCVState *env, target_ulong dst, target_ulong src, target_ulong num)
+{
+    uint32_t dst_value;
+    for (int i = 0, j = 0; i < num; i++) {
+        dst_value = cpu_ldub_data(env, src + i);
+
+        cpu_stb_data(env, dst + j++, dst_value & 0xf);
+        cpu_stb_data(env, dst + j++, (dst_value >> 4) & 0xf);
+    }
+}
+
 #endif /* !CONFIG_USER_ONLY */
